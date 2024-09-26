@@ -88,6 +88,17 @@
             {% if request.args.get('filter_castles') == 'true' %} checked {% endif %}>
     </form>
 
+    <!-- Botón para exportar la tabla a Excel -->
+    <h2>Exportar tabla a Excel</h2>
+    <form method="get" action="/export_excel">
+        <!-- Mantener los valores de los filtros en la exportación -->
+        <input type="hidden" name="start_date" value="{{ start_date }}">
+        <input type="hidden" name="end_date" value="{{ end_date }}">
+        <input type="hidden" name="filter_castles" value="{{ 'true' if request.args.get('filter_castles') == 'true' else '' }}">
+        
+        <input type="submit" value="Exportar a Excel">
+    </form>
+
     <h1>Datos guardados en la base de datos</h1>
     
     <!-- Tabla con los datos -->
