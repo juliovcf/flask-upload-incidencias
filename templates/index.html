@@ -78,7 +78,7 @@
 
     <!-- Filtrar incidencias de terminales CASTLES -->
     <h2>Filtrar incidencias de terminales CASTLES</h2>
-    <form method="get" action="/">
+    <form method="get" action="/" id="castles_filter_form">
         <!-- Mantener los valores de las fechas -->
         <input type="hidden" name="start_date" value="{{ start_date }}">
         <input type="hidden" name="end_date" value="{{ end_date }}">
@@ -86,8 +86,6 @@
         <label for="filter_castles">Mostrar incidencias de terminales CASTLES:</label>
         <input type="checkbox" id="filter_castles" name="filter_castles" value="true" 
             {% if request.args.get('filter_castles') == 'true' %} checked {% endif %}>
-        
-        <input type="submit" value="Aplicar filtro">
     </form>
 
     <h1>Datos guardados en la base de datos</h1>
@@ -100,6 +98,11 @@
         $(document).ready(function() {
             $('table').DataTable({
                 "order": [[ 5, "desc" ]]  // Ordenar por la columna de Fecha de creación (columna 5)
+            });
+
+            // Aplicar automáticamente el filtro CASTLES al marcar/desmarcar el checkbox
+            $('#filter_castles').on('change', function() {
+                $('#castles_filter_form').submit();
             });
         });
     </script>
