@@ -4,9 +4,9 @@ import pandas as pd
 
 app = Flask(__name__)
 
-# Ruta principal para subir el archivo
+# Ruta principal para subir el archivo y ver la tabla
 @app.route('/', methods=['GET', 'POST'])
-def upload_file():
+def upload_file_and_show_data():
     if request.method == 'POST':
         file = request.files['file']
         if file:
@@ -52,28 +52,18 @@ def upload_file():
             conn.commit()
             conn.close()
 
-            return redirect(url_for('show_data'))
+            return redirect(url_for('upload_file_and_show_data'))
 
-    return '''
-    <!doctype html>
-    <title>Subir archivo Excel</title>
-    <h1>Sube un archivo Excel</h1>
-    <form method=post enctype=multipart/form-data>
-      <input type=file name=file>
-      <input type=submit value=Subir>
-    </form>
-    '''
-
-# Ruta para mostrar los datos de la base de datos
-@app.route('/datos')
-def show_data():
+    # Cargar los datos de la base de datos
     conn = sqlite3.connect('incidencias.db')
     df = pd.read_sql('SELECT * FROM incidencias', conn)
     conn.close()
 
     # Renderizar la tabla como HTML
     table_html = df.to_html(classes='data', index=False)
-    return render_template('table.html', table=table_html)
+    
+    # Renderizar la página con la tabla y el formulario
+    return render_template('index.html', table=table_html)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

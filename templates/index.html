@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datos Guardados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        h1 {
+            color: #333;
+        }
+        a {
+            text-decoration: none;
+            color: #007BFF;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        table.data {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table.data th, table.data td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        table.data th {
+            background-color: #4CAF50;
+            color: white;
+            text-align: left;
+        }
+        table.data tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        table.data tr:hover {
+            background-color: #ddd;
+        }
+        table.data td {
+            text-align: left;
+        }
+    </style>
+    
+    <!-- Import DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+
+    <!-- Import jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Import DataTables JS -->
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+</head>
+<body>
+    <h1>Subir archivo Excel</h1>
+    <form method="post" enctype="multipart/form-data">
+      <input type="file" name="file">
+      <input type="submit" value="Subir">
+    </form>
+
+    <h1>Datos guardados en la base de datos</h1>
+    
+    <!-- Tabla con los datos -->
+    {{ table|safe }}
+
+    <!-- Inicializar DataTables -->
+    <script>
+        $(document).ready(function() {
+            $('table').DataTable({
+                "order": [[ 5, "desc" ]]  // Ordenar por la columna de Fecha de creación (columna 5)
+            });
+        });
+    </script>
+</body>
+</html>
