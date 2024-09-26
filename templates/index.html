@@ -61,13 +61,33 @@
       <input type="submit" value="Subir">
     </form>
 
+    <!-- Filtrar por rango de fechas -->
     <h2>Filtrar por rango de fechas</h2>
     <form method="get" action="/">
+        <!-- Mantener el valor del filtro de CASTLES -->
+        <input type="hidden" name="filter_castles" value="{{ 'true' if request.args.get('filter_castles') == 'true' else '' }}">
+        
         <label for="start_date">Fecha de inicio:</label>
         <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+        
         <label for="end_date">Fecha de fin:</label>
         <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+        
         <input type="submit" value="Filtrar">
+    </form>
+
+    <!-- Filtrar incidencias de terminales CASTLES -->
+    <h2>Filtrar incidencias de terminales CASTLES</h2>
+    <form method="get" action="/">
+        <!-- Mantener los valores de las fechas -->
+        <input type="hidden" name="start_date" value="{{ start_date }}">
+        <input type="hidden" name="end_date" value="{{ end_date }}">
+        
+        <label for="filter_castles">Mostrar incidencias de terminales CASTLES:</label>
+        <input type="checkbox" id="filter_castles" name="filter_castles" value="true" 
+            {% if request.args.get('filter_castles') == 'true' %} checked {% endif %}>
+        
+        <input type="submit" value="Aplicar filtro">
     </form>
 
     <h1>Datos guardados en la base de datos</h1>
