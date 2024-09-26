@@ -1,43 +1,86 @@
-from flask import Flask, request, render_template, redirect, url_for, send_file
+from flask import Flask, request, render_template, redirect, url_for, flash
 import sqlite3
 import pandas as pd
-from io import BytesIO
-from castles_manager import CastlesManager
-from excel_exporter import ExcelExporter  # Importar la clase ExcelExporter
 
 app = Flask(__name__)
+app.secret_key = "secret_key_for_flask_flash_messages"  # Necesario para usar mensajes flash en Flask
 
-# Crear una instancia de CastlesManager
-castles_manager = CastlesManager()
-
-# Crear una instancia de ExcelExporter
-excel_exporter = ExcelExporter()
-
-# Ruta principal para subir el archivo de incidencias y mostrar la tabla
+# Ruta principal para subir el archivo y mostrar la tabla
 @app.route('/', methods=['GET', 'POST'])
 def upload_file_and_show_data():
     if request.method == 'POST' and 'file' in request.files:
-        # Lógica para subir el archivo sigue igual...
-        pass
+        file = request.files['file']
+        if file:
+            try:
+                # Procesar el archivo Excel
+                df = pd.read_excel(file)
 
-    # Cargar los datos de la base de datos y aplicar los filtros
+                # Asegurarse de que las columnas necesarias existen en el archivo Excel
+                if 'Ubicación' not in df.columns or 'CI impactado' not in df.columns or 'Número' not in df.columns:
+                    flash('El archivo Excel no contiene las columnas necesarias. Asegúrate de que tiene las columnas: "Ubicación", "CI impactado", "Número".', 'error')
+                    return redirect(url_for('upload_file_and_show_data'))
+
+                # Extraer "Centro", "Caja" y "Síntoma"
+                df['Centro'] = df['Ubicación'].str.extract(r'(\d+)')
+                df['Caja'] = df['CI impactado'].str.extract(r'(caj\d+)')
+
+                # Seleccionar las columnas que queremos guardar y añadir la columna "Síntoma"
+                df_to_save = df[['Número', 'Centro', 'Caja', 'Breve descripción', 'Grupo de asignación', 'Fecha de creación', 'Síntoma']]
+
+                # Convertir los NaN en cadenas vacías
+                df_to_save = df_to_save.fillna('')
+
+                # Asegurarse de que la fecha sea una cadena
+                df_to_save['Fecha de creación'] = df_to_save['Fecha de creación'].astype(str)
+
+                # Conectar a la base de datos
+                conn = sqlite3.connect('incidencias.db')
+                cursor = conn.cursor()
+
+                # Crear la tabla si no existe, incluyendo la columna "Síntoma"
+                cursor.execute('''
+                CREATE TABLE IF NOT EXISTS incidencias (
+                    numero TEXT PRIMARY KEY,
+                    centro TEXT,
+                    caja TEXT,
+                    descripcion TEXT,
+                    sintoma TEXT,
+                    grupo_asignacion TEXT,
+                    fecha_creacion TEXT
+                )
+                ''')
+
+                # Insertar los datos, verificando que no exista la misma incidencia
+                for index, row in df_to_save.iterrows():
+                    cursor.execute('''
+                    INSERT OR IGNORE INTO incidencias (numero, centro, caja, descripcion, sintoma, grupo_asignacion, fecha_creacion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (row['Número'], row['Centro'], row['Caja'], row['Breve descripción'], row['Síntoma'], row['Grupo de asignación'], row['Fecha de creación']))
+
+                conn.commit()
+                conn.close()
+
+                flash('Datos insertados correctamente en la base de datos.', 'success')
+                return redirect(url_for('upload_file_and_show_data'))
+
+            except Exception as e:
+                flash(f'Error al procesar el archivo: {str(e)}', 'error')
+                return redirect(url_for('upload_file_and_show_data'))
+
+    # Cargar los datos de la base de datos y aplicar el filtro de fechas si es necesario
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     filter_castles = request.args.get('filter_castles')
 
     conn = sqlite3.connect('incidencias.db')
-
-    # Consulta base para cargar todas las incidencias
     query = 'SELECT * FROM incidencias'
     
-    # Lista de condiciones para aplicar filtros
+    # Filtrar por rango de fechas si está presente
     conditions = []
-    
-    # Aplicar filtro de rango de fechas si existe
     if start_date and end_date:
         conditions.append(f"fecha_creacion BETWEEN '{start_date}' AND '{end_date}'")
-    
-    # Aplicar filtro de Castles si está activado
+
+    # Filtrar por Castles si está activado
     if filter_castles == 'true':
         query = '''
         SELECT incidencias.*
@@ -50,52 +93,33 @@ def upload_file_and_show_data():
         if conditions:
             query += ' WHERE ' + ' AND '.join(conditions)
 
-    df = pd.read_sql(query, conn)
-    conn.close()
+    try:
+        df = pd.read_sql(query, conn)
+        conn.close()
 
-    # Renombrar las columnas para que tengan nombres más legibles
-    df = df.rename(columns={
-        'numero': 'Número de Incidencia',
-        'centro': 'Centro',
-        'caja': 'Caja',
-        'descripcion': 'Descripción',
-        'grupo_asignacion': 'Grupo de Asignación',
-        'fecha_creacion': 'Fecha de Creación'
-    })
+        if df.empty:
+            flash('No se encontraron incidencias en la base de datos.', 'warning')
 
-    # Renderizar la tabla como HTML
-    table_html = df.to_html(classes='table table-striped table-hover table-bordered', index=False)
+        # Renombrar las columnas para que tengan nombres más legibles
+        df = df.rename(columns={
+            'numero': 'Número de Incidencia',
+            'centro': 'Centro',
+            'caja': 'Caja',
+            'descripcion': 'Descripción',
+            'sintoma': 'Síntoma',
+            'grupo_asignacion': 'Grupo de Asignación',
+            'fecha_creacion': 'Fecha de Creación'
+        })
 
+        # Renderizar la tabla como HTML, incluso si está vacía
+        table_html = df.to_html(classes='table table-striped table-hover table-bordered', index=False)
+
+    except Exception as e:
+        flash(f'Error al cargar los datos: {str(e)}', 'error')
+        table_html = '<p>No se pueden mostrar los datos en este momento.</p>'
+
+    # Renderizar la página con la tabla, el formulario de fechas y el formulario para subir archivo
     return render_template('index.html', table=table_html, start_date=start_date, end_date=end_date)
-
-# Nueva ruta para exportar la tabla en Excel
-@app.route('/export_excel', methods=['GET'])
-def export_excel():
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    filter_castles = request.args.get('filter_castles')
-
-    # Llamar al método export_to_excel de la clase ExcelExporter
-    output = excel_exporter.export_to_excel(start_date, end_date, filter_castles)
-
-    # Construir el nombre del archivo en función de los filtros
-    file_name = "incidencias"
-    
-    if start_date and end_date:
-        file_name += f"_{start_date}_to_{end_date}"
-
-    if filter_castles == 'true':
-        file_name += "_castles"
-
-    file_name += ".xlsx"  # Añadir la extensión del archivo
-
-    # Enviar el archivo como respuesta con el nombre generado
-    return send_file(output, 
-                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                     download_name=file_name,  # Usar el nombre dinámico
-                     as_attachment=True)
-
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

@@ -45,6 +45,9 @@
         table {
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
+        .alert {
+            margin-top: 20px;
+        }
     </style>
     
     <!-- Import DataTables CSS -->
@@ -60,6 +63,22 @@
 
     <div class="container mt-4">
         <h1 class="mb-4">Gestión de Incidencias</h1>
+
+        <!-- Mensajes flash para notificaciones -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% endwith %}
 
         <!-- Formulario para subir archivo Excel -->
         <div class="card mb-4">
@@ -127,9 +146,9 @@
     <script>
         $(document).ready(function() {
             $('table').DataTable({
-                "order": [[ 5, "desc" ]],  // Ordenar por la columna de Fecha de creación (columna 5)
+                "order": [[ 6, "asc" ]],  // Ordenar por la columna de Fecha de creación (columna 5)
                 "paging": true,
-                "lengthMenu": [5, 10, 25, 50],
+                "lengthMenu": [10, 25, 50, 100],
                 "language": {
                     "search": "Buscar:",
                     "lengthMenu": "Mostrar _MENU_ registros",
@@ -157,4 +176,3 @@
 
 </body>
 </html>
-
