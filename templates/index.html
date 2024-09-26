@@ -61,6 +61,15 @@
       <input type="submit" value="Subir">
     </form>
 
+    <h2>Filtrar por rango de fechas</h2>
+    <form method="get" action="/">
+        <label for="start_date">Fecha de inicio:</label>
+        <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+        <label for="end_date">Fecha de fin:</label>
+        <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+        <input type="submit" value="Filtrar">
+    </form>
+
     <h1>Datos guardados en la base de datos</h1>
     
     <!-- Tabla con los datos -->

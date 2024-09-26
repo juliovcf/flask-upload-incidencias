@@ -4,10 +4,10 @@ import pandas as pd
 
 app = Flask(__name__)
 
-# Ruta principal para subir el archivo y ver la tabla
+# Ruta principal para subir el archivo y mostrar la tabla
 @app.route('/', methods=['GET', 'POST'])
 def upload_file_and_show_data():
-    if request.method == 'POST':
+    if request.method == 'POST' and 'file' in request.files:
         file = request.files['file']
         if file:
             # Procesar el archivo Excel
@@ -54,16 +54,24 @@ def upload_file_and_show_data():
 
             return redirect(url_for('upload_file_and_show_data'))
 
-    # Cargar los datos de la base de datos
+    # Cargar los datos de la base de datos y aplicar el filtro de fechas si es necesario
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
     conn = sqlite3.connect('incidencias.db')
-    df = pd.read_sql('SELECT * FROM incidencias', conn)
+    query = 'SELECT * FROM incidencias'
+    
+    if start_date and end_date:
+        query += f" WHERE fecha_creacion BETWEEN '{start_date}' AND '{end_date}'"
+    
+    df = pd.read_sql(query, conn)
     conn.close()
 
     # Renderizar la tabla como HTML
     table_html = df.to_html(classes='data', index=False)
     
-    # Renderizar la página con la tabla y el formulario
-    return render_template('index.html', table=table_html)
+    # Renderizar la página con la tabla, el formulario de fechas y el formulario para subir archivo
+    return render_template('index.html', table=table_html, start_date=start_date, end_date=end_date)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
