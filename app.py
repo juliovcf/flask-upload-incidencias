@@ -2,17 +2,46 @@ from flask import Flask, request, render_template, redirect, url_for, flash, sen
 import sqlite3
 import pandas as pd
 from io import BytesIO
-from excel_exporter import ExcelExporter
+import os
 
 app = Flask(__name__)
-app.secret_key = "secret_key_for_flask_flash_messages"  # Necesario para usar mensajes flash en Flask
+app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key')
 
-# Crear una instancia de ExcelExporter
-excel_exporter = ExcelExporter()
+DATABASE = 'incidencias.db'
 
-# Ruta principal para subir el archivo y mostrar la tabla
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    """Inicializa la base de datos si no existe."""
+    with get_db_connection() as conn:
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS incidencias (
+            numero TEXT PRIMARY KEY,
+            centro TEXT,
+            caja TEXT,
+            descripcion TEXT,
+            sintoma TEXT,
+            grupo_asignacion TEXT,
+            fecha_creacion TEXT
+        )
+        ''')
+        # Crear la tabla 'castles' si es necesaria
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS castles (
+            centro TEXT,
+            caja TEXT,
+            PRIMARY KEY (centro, caja)
+        )
+        ''')
+        conn.commit()
+
 @app.route('/', methods=['GET', 'POST'])
 def upload_file_and_show_data():
+    init_db()  # Inicializar la base de datos
+
     if request.method == 'POST' and 'file' in request.files:
         file = request.files['file']
         if file:
@@ -20,87 +49,92 @@ def upload_file_and_show_data():
                 # Procesar el archivo Excel
                 df = pd.read_excel(file)
 
-                # Asegurarse de que las columnas necesarias existen en el archivo Excel
-                if 'Ubicación' not in df.columns or 'CI impactado' not in df.columns or 'Número' not in df.columns:
-                    flash('El archivo Excel no contiene las columnas necesarias. Asegúrate de que tiene las columnas: "Ubicación", "CI impactado", "Número".', 'error')
+                # Verificar que las columnas necesarias existen
+                required_columns = ['Ubicación', 'CI impactado', 'Número', 'Breve descripción', 'Grupo de asignación', 'Fecha de creación', 'Síntoma']
+                missing_columns = [col for col in required_columns if col not in df.columns]
+                if missing_columns:
+                    flash(f'El archivo Excel no contiene las columnas necesarias: {", ".join(missing_columns)}.', 'danger')
                     return redirect(url_for('upload_file_and_show_data'))
 
                 # Extraer "Centro", "Caja" y "Síntoma"
-                df['Centro'] = df['Ubicación'].str.extract(r'(\d+)')
-                df['Caja'] = df['CI impactado'].str.extract(r'(caj\d+)')
+                df['Centro'] = df['Ubicación'].str.extract(r'(\d+)', expand=False)
+                df['Caja'] = df['CI impactado'].str.extract(r'(caj\d+)', expand=False)
 
-                # Seleccionar las columnas que queremos guardar y añadir la columna "Síntoma"
-                df_to_save = df[['Número', 'Centro', 'Caja', 'Breve descripción', 'Grupo de asignación', 'Fecha de creación', 'Síntoma']]
+                # Seleccionar las columnas que queremos guardar
+                df_to_save = df[['Número', 'Centro', 'Caja', 'Breve descripción', 'Síntoma', 'Grupo de asignación', 'Fecha de creación']]
 
-                # Convertir los NaN en cadenas vacías
+                # Convertir los NaN en cadenas vacías y asegurar tipos
                 df_to_save = df_to_save.fillna('')
-
-                # Asegurarse de que la fecha sea una cadena
                 df_to_save['Fecha de creación'] = df_to_save['Fecha de creación'].astype(str)
 
-                # Conectar a la base de datos
-                conn = sqlite3.connect('incidencias.db')
-                cursor = conn.cursor()
+                # Conectar a la base de datos y guardar los datos
+                with get_db_connection() as conn:
+                    cursor = conn.cursor()
 
-                # Crear la tabla si no existe, incluyendo la columna "Síntoma"
-                cursor.execute('''
-                CREATE TABLE IF NOT EXISTS incidencias (
-                    numero TEXT PRIMARY KEY,
-                    centro TEXT,
-                    caja TEXT,
-                    descripcion TEXT,
-                    sintoma TEXT,
-                    grupo_asignacion TEXT,
-                    fecha_creacion TEXT
-                )
-                ''')
-
-                # Insertar los datos, verificando que no exista la misma incidencia
-                for index, row in df_to_save.iterrows():
+                    # Crear la tabla si no existe
                     cursor.execute('''
-                    INSERT OR IGNORE INTO incidencias (numero, centro, caja, descripcion, sintoma, grupo_asignacion, fecha_creacion)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (row['Número'], row['Centro'], row['Caja'], row['Breve descripción'], row['Síntoma'], row['Grupo de asignación'], row['Fecha de creación']))
+                    CREATE TABLE IF NOT EXISTS incidencias (
+                        numero TEXT PRIMARY KEY,
+                        centro TEXT,
+                        caja TEXT,
+                        descripcion TEXT,
+                        sintoma TEXT,
+                        grupo_asignacion TEXT,
+                        fecha_creacion TEXT
+                    )
+                    ''')
 
-                conn.commit()
-                conn.close()
+                    # Insertar los datos, verificando que no exista la misma incidencia
+                    for index, row in df_to_save.iterrows():
+                        cursor.execute('''
+                        INSERT OR IGNORE INTO incidencias (numero, centro, caja, descripcion, sintoma, grupo_asignacion, fecha_creacion)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ''', (
+                            row['Número'],
+                            row['Centro'],
+                            row['Caja'],
+                            row['Breve descripción'],
+                            row['Síntoma'],
+                            row['Grupo de asignación'],
+                            row['Fecha de creación']
+                        ))
+
+                    conn.commit()
 
                 flash('Datos insertados correctamente en la base de datos.', 'success')
                 return redirect(url_for('upload_file_and_show_data'))
 
             except Exception as e:
-                flash(f'Error al procesar el archivo: {str(e)}', 'error')
+                flash(f'Error al procesar el archivo: {str(e)}', 'danger')
                 return redirect(url_for('upload_file_and_show_data'))
 
-    # Cargar los datos de la base de datos y aplicar el filtro de fechas si es necesario
+    # Manejo de solicitudes GET y otras situaciones
+    # Obtener los parámetros de filtrado
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     filter_castles = request.args.get('filter_castles')
 
-    conn = sqlite3.connect('incidencias.db')
+    # Construir la consulta SQL
     query = 'SELECT * FROM incidencias'
-    
-    # Filtrar por rango de fechas si está presente
+    params = []
     conditions = []
-    if start_date and end_date:
-        conditions.append(f"fecha_creacion BETWEEN '{start_date}' AND '{end_date}'")
 
-    # Filtrar por Castles si está activado
+    if start_date and end_date:
+        conditions.append("fecha_creacion BETWEEN ? AND ?")
+        params.extend([start_date, end_date])
+
     if filter_castles == 'true':
         query = '''
         SELECT incidencias.*
         FROM incidencias
         JOIN castles ON incidencias.centro = castles.centro AND incidencias.caja = castles.caja
         '''
-        if conditions:
-            query += ' WHERE ' + ' AND '.join(conditions)
-    else:
-        if conditions:
-            query += ' WHERE ' + ' AND '.join(conditions)
+    if conditions:
+        query += ' WHERE ' + ' AND '.join(conditions)
 
     try:
-        df = pd.read_sql(query, conn)
-        conn.close()
+        with get_db_connection() as conn:
+            df = pd.read_sql_query(query, conn, params=params)
 
         if df.empty:
             flash('No se encontraron incidencias en la base de datos.', 'warning')
@@ -116,42 +150,79 @@ def upload_file_and_show_data():
             'fecha_creacion': 'Fecha de Creación'
         })
 
-        # Renderizar la tabla como HTML, incluso si está vacía
-        table_html = df.to_html(classes='table table-striped table-hover table-bordered', index=False)
+        # Convertir el DataFrame a una lista de diccionarios
+        data = df.to_dict(orient='records')
+        columns = df.columns.tolist()
 
     except Exception as e:
-        flash(f'Error al cargar los datos: {str(e)}', 'error')
-        table_html = '<p>No se pueden mostrar los datos en este momento.</p>'
+        flash(f'Error al cargar los datos: {str(e)}', 'danger')
+        data = []
+        columns = []
 
-    # Renderizar la página con la tabla, el formulario de fechas y el formulario para subir archivo
-    return render_template('index.html', table=table_html, start_date=start_date, end_date=end_date)
+    return render_template('index.html', data=data, columns=columns, start_date=start_date, end_date=end_date)
 
-# Nueva ruta para exportar la tabla en Excel
+
 @app.route('/export_excel', methods=['GET'])
 def export_excel():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     filter_castles = request.args.get('filter_castles')
 
-    # Llamar al método export_to_excel de la clase ExcelExporter
-    output = excel_exporter.export_to_excel(start_date, end_date, filter_castles)
+    # Construir la consulta SQL
+    query = 'SELECT * FROM incidencias'
+    params = []
+    conditions = []
 
-    # Construir el nombre del archivo en función de los filtros
-    file_name = "incidencias"
-    
     if start_date and end_date:
-        file_name += f"_{start_date}_to_{end_date}"
+        conditions.append("fecha_creacion BETWEEN ? AND ?")
+        params.extend([start_date, end_date])
 
     if filter_castles == 'true':
-        file_name += "_castles"
+        query = '''
+        SELECT incidencias.*
+        FROM incidencias
+        JOIN castles ON incidencias.centro = castles.centro AND incidencias.caja = castles.caja
+        '''
+    if conditions:
+        query += ' WHERE ' + ' AND '.join(conditions)
 
-    file_name += ".xlsx"  # Añadir la extensión del archivo
+    try:
+        with get_db_connection() as conn:
+            df = pd.read_sql_query(query, conn, params=params)
 
-    # Enviar el archivo como respuesta con el nombre generado
-    return send_file(output, 
-                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                     download_name=file_name,  # Usar el nombre dinámico
-                     as_attachment=True)
+        # Renombrar las columnas si es necesario
+        df = df.rename(columns={
+            'numero': 'Número de Incidencia',
+            'centro': 'Centro',
+            'caja': 'Caja',
+            'descripcion': 'Descripción',
+            'sintoma': 'Síntoma',
+            'grupo_asignacion': 'Grupo de Asignación',
+            'fecha_creacion': 'Fecha de Creación'
+        })
+
+        # Exportar a Excel
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Incidencias')
+        output.seek(0)
+
+        # Construir el nombre del archivo
+        file_name = "incidencias"
+        if start_date and end_date:
+            file_name += f"_{start_date}_to_{end_date}"
+        if filter_castles == 'true':
+            file_name += "_castles"
+        file_name += ".xlsx"
+
+        return send_file(output, 
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                         download_name=file_name,
+                         as_attachment=True)
+
+    except Exception as e:
+        flash(f'Error al exportar los datos: {str(e)}', 'danger')
+        return redirect(url_for('upload_file_and_show_data'))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
