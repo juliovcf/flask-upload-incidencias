@@ -28,11 +28,11 @@ def init_db():
             fecha_creacion TEXT
         )
         ''')
-        # Crear la tabla 'castles' si es necesaria
         conn.execute('''
         CREATE TABLE IF NOT EXISTS castles (
             centro TEXT,
             caja TEXT,
+            fecha_instalacion TEXT,
             PRIMARY KEY (centro, caja)
         )
         ''')
@@ -128,9 +128,13 @@ def upload_file_and_show_data():
         SELECT incidencias.*
         FROM incidencias
         JOIN castles ON incidencias.centro = castles.centro AND incidencias.caja = castles.caja
+        WHERE date(castles.fecha_instalacion) <= date(incidencias.fecha_creacion)
         '''
-    if conditions:
-        query += ' WHERE ' + ' AND '.join(conditions)
+        if conditions:
+            query += ' AND ' + ' AND '.join(conditions)
+    else:
+        if conditions:
+            query += ' WHERE ' + ' AND '.join(conditions)
 
     try:
         with get_db_connection() as conn:
@@ -182,9 +186,13 @@ def export_excel():
         SELECT incidencias.*
         FROM incidencias
         JOIN castles ON incidencias.centro = castles.centro AND incidencias.caja = castles.caja
+        WHERE date(castles.fecha_instalacion) <= date(incidencias.fecha_creacion)
         '''
-    if conditions:
-        query += ' WHERE ' + ' AND '.join(conditions)
+        if conditions:
+            query += ' AND ' + ' AND '.join(conditions)
+    else:
+        if conditions:
+            query += ' WHERE ' + ' AND '.join(conditions)
 
     try:
         with get_db_connection() as conn:
