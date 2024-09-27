@@ -23,8 +23,12 @@ def init_db():
             centro TEXT,
             caja TEXT,
             descripcion TEXT,
+            breve_descripcion TEXT,
             sintoma TEXT,
             grupo_asignacion TEXT,
+            id_correlacion TEXT,
+            fabricante TEXT,
+            resolucion TEXT,
             fecha_creacion TEXT
         )
         ''')
@@ -50,7 +54,7 @@ def upload_file_and_show_data():
                 df = pd.read_excel(file)
 
                 # Verificar que las columnas necesarias existen
-                required_columns = ['Ubicación', 'CI impactado', 'Número', 'Breve descripción', 'Grupo de asignación', 'Fecha de creación', 'Síntoma']
+                required_columns = ['Ubicación', 'CI impactado', 'Número', 'Descripción', 'Breve descripción', 'Síntoma', 'Grupo de asignación', ' Notas de resolución', 'Fecha de creación']
                 missing_columns = [col for col in required_columns if col not in df.columns]
                 if missing_columns:
                     flash(f'El archivo Excel no contiene las columnas necesarias: {", ".join(missing_columns)}.', 'danger')
@@ -61,7 +65,7 @@ def upload_file_and_show_data():
                 df['Caja'] = df['CI impactado'].str.extract(r'(caj\d+)', expand=False)
 
                 # Seleccionar las columnas que queremos guardar
-                df_to_save = df[['Número', 'Centro', 'Caja', 'Breve descripción', 'Síntoma', 'Grupo de asignación', 'Fecha de creación']]
+                df_to_save = df[['Número', 'Centro', 'Caja', 'Descripción', 'Breve descripción', 'Síntoma', 'Grupo de asignación', 'ID de correlación', 'Fabricante', ' Notas de resolución', 'Fecha de creación']]
 
                 # Convertir los NaN en cadenas vacías y asegurar tipos
                 df_to_save = df_to_save.fillna('')
@@ -78,8 +82,12 @@ def upload_file_and_show_data():
                         centro TEXT,
                         caja TEXT,
                         descripcion TEXT,
+                        breve_descripcion TEXT,
                         sintoma TEXT,
                         grupo_asignacion TEXT,
+                        id_correlacion TEXT,
+                        fabricante TEXT,
+                        resolucion TEXT,
                         fecha_creacion TEXT
                     )
                     ''')
@@ -87,15 +95,19 @@ def upload_file_and_show_data():
                     # Insertar los datos, verificando que no exista la misma incidencia
                     for index, row in df_to_save.iterrows():
                         cursor.execute('''
-                        INSERT OR IGNORE INTO incidencias (numero, centro, caja, descripcion, sintoma, grupo_asignacion, fecha_creacion)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT OR IGNORE INTO incidencias (numero, centro, caja, descripcion, breve_descripcion, sintoma, grupo_asignacion, id_correlacion, fabricante, resolucion, fecha_creacion)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ''', (
                             row['Número'],
                             row['Centro'],
                             row['Caja'],
+                            row['Descripción'],
                             row['Breve descripción'],
                             row['Síntoma'],
                             row['Grupo de asignación'],
+                            row['ID de correlación'],
+                            row['Fabricante'],
+                            row[' Notas de resolución'],
                             row['Fecha de creación']
                         ))
 
@@ -125,7 +137,7 @@ def upload_file_and_show_data():
 
     if filter_castles == 'true':
         query = '''
-        SELECT incidencias.*
+        SELECT numero, incidencias.centro, incidencias.caja, breve_descripcion, sintoma, grupo_asignacion, fabricante, resolucion, fecha_creacion
         FROM incidencias
         JOIN castles ON incidencias.centro = castles.centro AND incidencias.caja = castles.caja
         WHERE date(castles.fecha_instalacion) <= date(incidencias.fecha_creacion)
@@ -149,8 +161,12 @@ def upload_file_and_show_data():
             'centro': 'Centro',
             'caja': 'Caja',
             'descripcion': 'Descripción',
+            'breve_descripcion': 'Breve Descripción',
             'sintoma': 'Síntoma',
             'grupo_asignacion': 'Grupo de Asignación',
+            'id_correlacion': 'ID de Correlación',
+            'fabricante': 'Fabricante',
+            'resolucion': 'Resolución',
             'fecha_creacion': 'Fecha de Creación'
         })
 
@@ -204,8 +220,12 @@ def export_excel():
             'centro': 'Centro',
             'caja': 'Caja',
             'descripcion': 'Descripción',
+            'breve_descripcion': 'Breve Descripción',
             'sintoma': 'Síntoma',
             'grupo_asignacion': 'Grupo de Asignación',
+            'id_correlacion': 'ID de Correlación',
+            'fabricante': 'Fabricante',
+            'resolucion': 'Resolución',
             'fecha_creacion': 'Fecha de Creación'
         })
 
