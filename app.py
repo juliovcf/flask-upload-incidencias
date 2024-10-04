@@ -127,13 +127,14 @@ def upload_file_and_show_data():
     filter_castles = request.args.get('filter_castles')
 
     # Construir la consulta SQL
-    query = 'SELECT * FROM incidencias'
+    query = 'SELECT numero, centro, caja, breve_descripcion, sintoma, grupo_asignacion, fabricante, resolucion, fecha_creacion FROM incidencias'
     params = []
     conditions = []
 
     if start_date and end_date:
-        conditions.append("fecha_creacion BETWEEN ? AND ?")
+        conditions.append("fecha_creacion >= ? AND fecha_creacion <= ? || ' 23:59:59'")
         params.extend([start_date, end_date])
+
 
     if filter_castles == 'true':
         query = '''
@@ -147,6 +148,10 @@ def upload_file_and_show_data():
     else:
         if conditions:
             query += ' WHERE ' + ' AND '.join(conditions)
+    
+    # Ordenamos por fecha
+    query += ' ORDER BY fecha_creacion'
+
 
     try:
         with get_db_connection() as conn:
@@ -194,7 +199,7 @@ def export_excel():
     conditions = []
 
     if start_date and end_date:
-        conditions.append("fecha_creacion BETWEEN ? AND ?")
+        conditions.append("fecha_creacion >= ? AND fecha_creacion <= ?")
         params.extend([start_date, end_date])
 
     if filter_castles == 'true':
