@@ -95,8 +95,19 @@ def upload_file_and_show_data():
                     # Insertar los datos, verificando que no exista la misma incidencia
                     for index, row in df_to_save.iterrows():
                         cursor.execute('''
-                        INSERT OR IGNORE INTO incidencias (numero, centro, caja, descripcion, breve_descripcion, sintoma, grupo_asignacion, id_correlacion, fabricante, resolucion, fecha_creacion)
+                        INSERT INTO incidencias (numero, centro, caja, descripcion, breve_descripcion, sintoma, grupo_asignacion, id_correlacion, fabricante, resolucion, fecha_creacion)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(numero) DO UPDATE SET
+                            centro = excluded.centro,
+                            caja = excluded.caja,
+                            descripcion = excluded.descripcion,
+                            breve_descripcion = excluded.breve_descripcion,
+                            sintoma = excluded.sintoma,
+                            grupo_asignacion = excluded.grupo_asignacion,
+                            id_correlacion = excluded.id_correlacion,
+                            fabricante = excluded.fabricante,
+                            resolucion = excluded.resolucion,
+                            fecha_creacion = excluded.fecha_creacion
                         ''', (
                             row['Número'],
                             row['Centro'],
