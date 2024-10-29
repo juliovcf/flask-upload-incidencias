@@ -210,7 +210,7 @@ def export_excel():
     conditions = []
 
     if start_date and end_date:
-        conditions.append("fecha_creacion >= ? AND fecha_creacion <= ?")
+        conditions.append("fecha_creacion >= ? AND fecha_creacion <= ? || ' 23:59:59'")
         params.extend([start_date, end_date])
 
     if filter_castles == 'true':
