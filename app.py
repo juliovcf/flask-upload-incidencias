@@ -15,7 +15,6 @@ def get_db_connection():
     return conn
 
 def init_db():
-    """Inicializa la base de datos si no existe."""
     with get_db_connection() as conn:
         conn.execute('''
         CREATE TABLE IF NOT EXISTS incidencias (
@@ -29,17 +28,17 @@ def init_db():
             id_correlacion TEXT,
             fabricante TEXT,
             resolucion TEXT,
-            fecha_creacion TEXT
+            fecha_creacion TEXT,
+            tipo_incidencia TEXT DEFAULT ''
         )
         ''')
-        conn.execute('''
-        CREATE TABLE IF NOT EXISTS castles (
-            centro TEXT,
-            caja TEXT,
-            fecha_instalacion TEXT,
-            PRIMARY KEY (centro, caja)
-        )
-        ''')
+        
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(incidencias)")
+        columns = [col[1] for col in cursor.fetchall()]
+        # Si la columna `tipo_incidencia` no existe, la añadimos a la tabla existente
+        if 'tipo_incidencia' not in columns:
+            cursor.execute("ALTER TABLE incidencias ADD COLUMN tipo_incidencia TEXT DEFAULT ''")
         conn.commit()
 
 @app.route('/', methods=['GET', 'POST'])
@@ -88,39 +87,42 @@ def upload_file_and_show_data():
                         id_correlacion TEXT,
                         fabricante TEXT,
                         resolucion TEXT,
-                        fecha_creacion TEXT
+                        fecha_creacion TEXT,
+                        tipo_incidencia TEXT DEFAULT ''
                     )
                     ''')
 
-                    # Insertar los datos, verificando que no exista la misma incidencia
-                    for index, row in df_to_save.iterrows():
-                        cursor.execute('''
-                        INSERT INTO incidencias (numero, centro, caja, descripcion, breve_descripcion, sintoma, grupo_asignacion, id_correlacion, fabricante, resolucion, fecha_creacion)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(numero) DO UPDATE SET
-                            centro = excluded.centro,
-                            caja = excluded.caja,
-                            descripcion = excluded.descripcion,
-                            breve_descripcion = excluded.breve_descripcion,
-                            sintoma = excluded.sintoma,
-                            grupo_asignacion = excluded.grupo_asignacion,
-                            id_correlacion = excluded.id_correlacion,
-                            fabricante = excluded.fabricante,
-                            resolucion = excluded.resolucion,
-                            fecha_creacion = excluded.fecha_creacion
-                        ''', (
-                            row['Número'],
-                            row['Centro'],
-                            row['Caja'],
-                            row['Descripción'],
-                            row['Breve descripción'],
-                            row['Síntoma'],
-                            row['Grupo de asignación'],
-                            row['ID de correlación'],
-                            row['Fabricante'],
-                            row[' Notas de resolución'],
-                            row['Fecha de creación']
-                        ))
+                # Insertar los datos, verificando que no exista la misma incidencia
+                for index, row in df_to_save.iterrows():
+                    cursor.execute('''
+                    INSERT INTO incidencias (numero, centro, caja, descripcion, breve_descripcion, sintoma, grupo_asignacion, id_correlacion, fabricante, resolucion, fecha_creacion, tipo_incidencia)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(numero) DO UPDATE SET
+                        centro = excluded.centro,
+                        caja = excluded.caja,
+                        descripcion = excluded.descripcion,
+                        breve_descripcion = excluded.breve_descripcion,
+                        sintoma = excluded.sintoma,
+                        grupo_asignacion = excluded.grupo_asignacion,
+                        id_correlacion = excluded.id_correlacion,
+                        fabricante = excluded.fabricante,
+                        resolucion = excluded.resolucion,
+                        fecha_creacion = excluded.fecha_creacion
+                    ''', (
+                        row['Número'],
+                        row['Centro'],
+                        row['Caja'],
+                        row['Descripción'],
+                        row['Breve descripción'],
+                        row['Síntoma'],
+                        row['Grupo de asignación'],
+                        row['ID de correlación'],
+                        row['Fabricante'],
+                        row[' Notas de resolución'],
+                        row['Fecha de creación'],
+                        ''  # Nuevo valor por defecto para tipo_incidencia
+                    ))
+
 
                     conn.commit()
 
@@ -267,6 +269,29 @@ def export_excel():
     except Exception as e:
         flash(f'Error al exportar los datos: {str(e)}', 'danger')
         return redirect(url_for('upload_file_and_show_data'))
+
+@app.route('/update_tipo_incidencia/<numero>', methods=['POST'])
+def update_tipo_incidencia(numero):
+    tipo_incidencia = request.form.get('tipo_incidencia')
+    if not tipo_incidencia:
+        flash('Debe seleccionar un tipo de incidencia.', 'danger')
+        return redirect(url_for('upload_file_and_show_data'))
+
+    try:
+        with get_db_connection() as conn:
+            conn.execute('''
+            UPDATE incidencias
+            SET tipo_incidencia = ?
+            WHERE numero = ?
+            ''', (tipo_incidencia, numero))
+            conn.commit()
+        
+        flash(f'Tipo de incidencia actualizado correctamente para la incidencia {numero}.', 'success')
+
+    except Exception as e:
+        flash(f'Error al actualizar el tipo de incidencia: {str(e)}', 'danger')
+
+    return redirect(url_for('upload_file_and_show_data'))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

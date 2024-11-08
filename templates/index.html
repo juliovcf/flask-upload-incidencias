@@ -85,29 +85,46 @@
             </div>
         </div>
 
-        <!-- Tabla de resultados -->
-        <div class="table-container">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover table-bordered">
-                    <thead>
-                        <tr>
-                            {% for column in columns %}
-                                <th>{{ column }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in data %}
-                            <tr>
-                                {% for column in columns %}
-                                    <td>{{ row[column] }}</td>
-                                {% endfor %}
-                            </tr>
+<!-- Tabla de resultados -->
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-striped table-hover table-bordered">
+            <thead>
+                <tr>
+                    {% for column in columns %}
+                        <th>{{ column }}</th>
+                    {% endfor %}
+                    <th>Tipo de Incidencia</th> <!-- Añadir nueva columna para tipo_incidencia -->
+                    <th>Acciones</th> <!-- Columna para botón de actualización -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                    <tr>
+                        {% for column in columns %}
+                            <td>{{ row[column] }}</td>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                        <td>
+                            <!-- Formulario para actualizar tipo de incidencia -->
+                            <form action="{{ url_for('update_tipo_incidencia', numero=row['Número de Incidencia']) }}" method="post">
+                                <select name="tipo_incidencia" class="form-select">
+                                    <option value="" {% if row['Tipo de Incidencia'] == "Reparación" %}selected{% endif %}></option>
+                                    <option value="No incidencia" {% if row['Tipo de Incidencia'] == "No incidencia" %}selected{% endif %}>No incidencia</option>
+                                    <option value="Consulta" {% if row['Tipo de Incidencia'] == "Consulta" %}selected{% endif %}>Consulta</option>
+                                    <option value="Bloqueo" {% if row['Tipo de Incidencia'] == "Bloqueo" %}selected{% endif %}>Bloqueo</option>
+                                    <option value="Falla táctil" {% if row['Tipo de Incidencia'] == "Falla táctil" %}selected{% endif %}>Falla táctil</option>
+                                </select>
+                        </td>
+                        <td>
+                                <button type="submit" class="btn btn-primary">Actualizar</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
         
     </main>
 
