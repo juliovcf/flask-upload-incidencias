@@ -123,7 +123,6 @@ def upload_file_and_show_data():
                         ''  # Nuevo valor por defecto para tipo_incidencia
                     ))
 
-
                     conn.commit()
 
                 flash('Datos insertados correctamente en la base de datos.', 'success')
@@ -196,14 +195,18 @@ def upload_file_and_show_data():
         data = []
         columns = []
 
-    return render_template('index.html', data=data, columns=columns, start_date=start_date, end_date=end_date)
+    return render_template('index.html', data=data, columns=columns, start_date=start_date, end_date=end_date, filter_castles=filter_castles)
 
 @app.route('/update_tipo_incidencia/<numero>', methods=['POST'])
 def update_tipo_incidencia(numero):
     tipo_incidencia = request.form.get('tipo_incidencia')
     if not tipo_incidencia:
-        flash('Debe seleccionar un tipo de incidencia.', 'danger')
-        return redirect(url_for('upload_file_and_show_data'))
+        tipo_incidencia = ''  # Permitir que se seleccione el valor vacío
+
+    # Recuperar los parámetros de filtrado para mantener el estado
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
+    filter_castles = request.form.get('filter_castles')
 
     try:
         with get_db_connection() as conn:
@@ -219,7 +222,8 @@ def update_tipo_incidencia(numero):
     except Exception as e:
         flash(f'Error al actualizar el tipo de incidencia: {str(e)}', 'danger')
 
-    return redirect(url_for('upload_file_and_show_data'))
+    # Redirigir manteniendo los parámetros de filtrado
+    return redirect(url_for('upload_file_and_show_data', start_date=start_date, end_date=end_date, filter_castles=filter_castles))
 
 @app.route('/export_excel', methods=['GET'])
 def export_excel():

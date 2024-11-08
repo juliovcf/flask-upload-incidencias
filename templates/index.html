@@ -114,6 +114,11 @@
                                             <option value="No incidencia" {% if row[column] == "No incidencia" %}selected{% endif %}>No incidencia</option>
                                             <option value="Consulta" {% if row[column] == "Consulta" %}selected{% endif %}>Consulta</option>
                                         </select>
+
+                                            <!-- Campos ocultos para mantener los filtros -->
+                                            <input type="hidden" name="start_date" value="{{ start_date }}">
+                                            <input type="hidden" name="end_date" value="{{ end_date }}">
+                                            <input type="hidden" name="filter_castles" value="{{ filter_castles }}">
                                     </form>
                                 </td>
                             {% else %}
