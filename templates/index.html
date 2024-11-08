@@ -94,31 +94,32 @@
                     {% for column in columns %}
                         <th>{{ column }}</th>
                     {% endfor %}
-                    <th>Tipo de Incidencia</th> <!-- Añadir nueva columna para tipo_incidencia -->
-                    <th>Acciones</th> <!-- Columna para botón de actualización -->
                 </tr>
             </thead>
             <tbody>
                 {% for row in data %}
                     <tr>
                         {% for column in columns %}
-                            <td>{{ row[column] }}</td>
+                            {% if column == 'Tipo de Incidencia' %}
+                                <td>
+                                    <form action="{{ url_for('update_tipo_incidencia', numero=row['Número de Incidencia']) }}" method="post">
+                                        <span class="editable" onclick="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">{{ row[column] if row[column] else 'Sin especificar' }}</span>
+                                        <select name="tipo_incidencia" class="form-select" style="display: none;" onchange="this.form.submit()">
+                                            <option value="" {% if row[column] == '' %}selected{% endif %}></option>
+                                            <option value="Bloqueo" {% if row[column] == "Bloqueo" %}selected{% endif %}>Bloqueo</option>
+                                            <option value="Falla táctil" {% if row[column] == "Falla táctil" %}selected{% endif %}>Falla táctil</option>
+                                            <option value="Cableado" {% if row[column] == "Cableado" %}selected{% endif %}>Cableado</option>
+                                            <option value="Partes rotas" {% if row[column] == "Partes rotas" %}selected{% endif %}>Partes rotas</option>
+                                            <option value="Sin especificar" {% if row[column] == "Sin especificar" %}selected{% endif %}>Sin especificar</option>
+                                            <option value="No incidencia" {% if row[column] == "No incidencia" %}selected{% endif %}>No incidencia</option>
+                                            <option value="Consulta" {% if row[column] == "Consulta" %}selected{% endif %}>Consulta</option>
+                                        </select>
+                                    </form>
+                                </td>
+                            {% else %}
+                                <td>{{ row[column] }}</td>
+                            {% endif %}
                         {% endfor %}
-                        <td>
-                            <!-- Formulario para actualizar tipo de incidencia -->
-                            <form action="{{ url_for('update_tipo_incidencia', numero=row['Número de Incidencia']) }}" method="post">
-                                <select name="tipo_incidencia" class="form-select">
-                                    <option value="" {% if row['Tipo de Incidencia'] == "Reparación" %}selected{% endif %}></option>
-                                    <option value="No incidencia" {% if row['Tipo de Incidencia'] == "No incidencia" %}selected{% endif %}>No incidencia</option>
-                                    <option value="Consulta" {% if row['Tipo de Incidencia'] == "Consulta" %}selected{% endif %}>Consulta</option>
-                                    <option value="Bloqueo" {% if row['Tipo de Incidencia'] == "Bloqueo" %}selected{% endif %}>Bloqueo</option>
-                                    <option value="Falla táctil" {% if row['Tipo de Incidencia'] == "Falla táctil" %}selected{% endif %}>Falla táctil</option>
-                                </select>
-                        </td>
-                        <td>
-                                <button type="submit" class="btn btn-primary">Actualizar</button>
-                            </form>
-                        </td>
                     </tr>
                 {% endfor %}
             </tbody>

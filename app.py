@@ -140,7 +140,7 @@ def upload_file_and_show_data():
     filter_castles = request.args.get('filter_castles')
 
     # Construir la consulta SQL
-    query = 'SELECT numero, centro, caja, breve_descripcion, sintoma, grupo_asignacion, fabricante, resolucion, fecha_creacion FROM incidencias'
+    query = 'SELECT numero, centro, caja, breve_descripcion, sintoma, grupo_asignacion, fabricante, resolucion, fecha_creacion, tipo_incidencia FROM incidencias'
     params = []
     conditions = []
 
@@ -148,10 +148,9 @@ def upload_file_and_show_data():
         conditions.append("fecha_creacion >= ? AND fecha_creacion <= ? || ' 23:59:59'")
         params.extend([start_date, end_date])
 
-
     if filter_castles == 'true':
         query = '''
-        SELECT numero, incidencias.centro, incidencias.caja, breve_descripcion, sintoma, grupo_asignacion, fabricante, resolucion, fecha_creacion
+        SELECT numero, incidencias.centro, incidencias.caja, breve_descripcion, sintoma, grupo_asignacion, fabricante, resolucion, fecha_creacion, tipo_incidencia
         FROM incidencias
         JOIN castles ON incidencias.centro = castles.centro AND incidencias.caja = castles.caja
         WHERE date(castles.fecha_instalacion) <= date(incidencias.fecha_creacion)
@@ -164,7 +163,6 @@ def upload_file_and_show_data():
     
     # Ordenamos por fecha
     query += ' ORDER BY fecha_creacion'
-
 
     try:
         with get_db_connection() as conn:
@@ -185,7 +183,8 @@ def upload_file_and_show_data():
             'id_correlacion': 'ID de Correlación',
             'fabricante': 'Fabricante',
             'resolucion': 'Resolución',
-            'fecha_creacion': 'Fecha de Creación'
+            'fecha_creacion': 'Fecha de Creación',
+            'tipo_incidencia': 'Tipo de Incidencia'
         })
 
         # Convertir el DataFrame a una lista de diccionarios
@@ -199,6 +198,28 @@ def upload_file_and_show_data():
 
     return render_template('index.html', data=data, columns=columns, start_date=start_date, end_date=end_date)
 
+@app.route('/update_tipo_incidencia/<numero>', methods=['POST'])
+def update_tipo_incidencia(numero):
+    tipo_incidencia = request.form.get('tipo_incidencia')
+    if not tipo_incidencia:
+        flash('Debe seleccionar un tipo de incidencia.', 'danger')
+        return redirect(url_for('upload_file_and_show_data'))
+
+    try:
+        with get_db_connection() as conn:
+            conn.execute('''
+            UPDATE incidencias
+            SET tipo_incidencia = ?
+            WHERE numero = ?
+            ''', (tipo_incidencia, numero))
+            conn.commit()
+        
+        flash(f'Tipo de incidencia actualizado correctamente para la incidencia {numero}.', 'success')
+
+    except Exception as e:
+        flash(f'Error al actualizar el tipo de incidencia: {str(e)}', 'danger')
+
+    return redirect(url_for('upload_file_and_show_data'))
 
 @app.route('/export_excel', methods=['GET'])
 def export_excel():
@@ -244,7 +265,8 @@ def export_excel():
             'id_correlacion': 'ID de Correlación',
             'fabricante': 'Fabricante',
             'resolucion': 'Resolución',
-            'fecha_creacion': 'Fecha de Creación'
+            'fecha_creacion': 'Fecha de Creación',
+            'tipo_incidencia': 'Tipo de Incidencia'
         })
 
         # Exportar a Excel
@@ -269,29 +291,6 @@ def export_excel():
     except Exception as e:
         flash(f'Error al exportar los datos: {str(e)}', 'danger')
         return redirect(url_for('upload_file_and_show_data'))
-
-@app.route('/update_tipo_incidencia/<numero>', methods=['POST'])
-def update_tipo_incidencia(numero):
-    tipo_incidencia = request.form.get('tipo_incidencia')
-    if not tipo_incidencia:
-        flash('Debe seleccionar un tipo de incidencia.', 'danger')
-        return redirect(url_for('upload_file_and_show_data'))
-
-    try:
-        with get_db_connection() as conn:
-            conn.execute('''
-            UPDATE incidencias
-            SET tipo_incidencia = ?
-            WHERE numero = ?
-            ''', (tipo_incidencia, numero))
-            conn.commit()
-        
-        flash(f'Tipo de incidencia actualizado correctamente para la incidencia {numero}.', 'success')
-
-    except Exception as e:
-        flash(f'Error al actualizar el tipo de incidencia: {str(e)}', 'danger')
-
-    return redirect(url_for('upload_file_and_show_data'))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
