@@ -1,6 +1,9 @@
+# type: ignore
 import sqlite3
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+
 
 # Función para formatear la fecha al formato 'YYYY-MM-DD'
 def format_date(date_value):

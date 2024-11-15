@@ -1,8 +1,11 @@
-from flask import Flask, request, render_template, redirect, url_for, flash, send_file
-import sqlite3
-import pandas as pd
-from io import BytesIO
+# type: ignore
 import os
+import sqlite3
+from io import BytesIO
+
+import pandas as pd
+from flask import (Flask, flash, redirect, render_template, request, send_file,
+                   url_for)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key')
@@ -32,7 +35,7 @@ def init_db():
             tipo_incidencia TEXT DEFAULT ''
         )
         ''')
-        
+
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(incidencias)")
         columns = [col[1] for col in cursor.fetchall()]
@@ -159,7 +162,7 @@ def upload_file_and_show_data():
     else:
         if conditions:
             query += ' WHERE ' + ' AND '.join(conditions)
-    
+
     # Ordenamos por fecha
     query += ' ORDER BY fecha_creacion'
 
@@ -216,7 +219,7 @@ def update_tipo_incidencia(numero):
             WHERE numero = ?
             ''', (tipo_incidencia, numero))
             conn.commit()
-        
+
         flash(f'Tipo de incidencia actualizado correctamente para la incidencia {numero}.', 'success')
 
     except Exception as e:

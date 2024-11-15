@@ -1,6 +1,9 @@
-import pandas as pd
+# type: ignore
 import sqlite3
 from io import BytesIO
+
+import pandas as pd
+
 
 class ExcelExporter:
     def __init__(self, db_path='incidencias.db'):
