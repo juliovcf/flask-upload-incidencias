@@ -290,7 +290,7 @@ def export_excel():
             file_name += "_castles"
         file_name += ".xlsx"
 
-        return send_file(output, 
+        return send_file(output,
                          mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                          download_name=file_name,
                          as_attachment=True)
