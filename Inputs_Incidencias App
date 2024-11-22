@@ -1,0 +1,7 @@
+Mejoras:
+- Mejorar categorías.
+- Añadir un input de comentarios por si toca rascar alguna incidencia.
+
+Incidencias:
+- Al elegir una categoría sube arriba del todo, si pasas de los 10 registros paginando al actualizar te devuelve a la página 1. Lo mismo si has configurado la paginación, al guardar hace un reset de la página.
+- Me suena que habia un error al exportar si no había fecha.
